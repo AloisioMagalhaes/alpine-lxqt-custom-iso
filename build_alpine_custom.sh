@@ -34,14 +34,19 @@ echo "--- 🛠️ Preparando Ambiente de Build ---"
 # O diretório /root/.abuild deve existir antes.
 mkdir -p /root/.abuild
 chmod 700 /root/.abuild
-
+echo 'PACKAGER="GitHub Actions Builder <action@github.com>"' > /root/.abuild/abuild.conf
 # Define o nome do arquivo de chave que será usado pelo abuild-keygen
-export ABUILD_KEY="/root/.abuild/ci-build-key"
+# 3. Gera a chave abuild de forma NÃO-INTERATIVA
+echo ">>> Gerando par de chaves RSA pública/privada para abuild de forma não interativa..."
+yes "" | abuild-keygen -n -i
 
-# 2. Cria chaves de assinatura abuild de forma não interativa.
-# O 'yes |' fornece entradas vazias (sem senha) para todos os prompts.
-echo ">>> Gerando par de chaves RSA para abuild (não-interativo)"
-yes | abuild-keygen -a -n || { echo "Falha ao criar chaves abuild."; exit 1; }
+# Verificação
+if [ $? -ne 0 ]; then
+    echo "Falha ao gerar chaves abuild. Verifique as dependências."
+    exit 1
+else
+    echo "Chaves abuild geradas com sucesso."
+fi
 # --- Fim do Bloco de Geração de Chaves ---
 
 # Clonar aports (se ainda não existir)
@@ -58,77 +63,81 @@ SCRIPT_DIR="${APORTS_DIR}/scripts"
 mkdir -p "${OUTPUT_DIR}"
 
 # ==========================================================
-# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO
+# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO (REFATORADO COM ECHO)
 # ==========================================================
 echo "--- 📝 Criando Arquivos de Configuração ---"
 
 # 3.1. Criação do Answerfile (setup-alpine.conf)
-cat << EOF > "${SCRIPT_DIR}/setup-alpine.conf"
-# Arquivo de Respostas para setup-alpine (GERADO AUTOMATICAMENTE)
-KEYMAPOPTS="${KEYMAP}"
-HOSTNAMEOPTS="${HOSTNAME}"
-DEVDOPTS="mdev"
-INTERFACESOPTS="auto lo
-iface lo inet loopback
-auto eth0
-iface eth0 inet dhcp"
-TIMEZONEOPTS="${TIMEZONE}"
-NTPOPTS="chrony"
-SSHDOPTS="openssh"
-APKREPOSOPTS="-1 -c"
-USEROPTS="-a -g audio,video,input,netdev ${USUARIO}"
-DISKOPTS="-m sys ${DISCO_ALVO}"
-EOF
-echo "   -> setup-alpine.conf criado."
+# Usa-se `>` na primeira linha para criar/sobrescrever o arquivo.
+echo "# Arquivo de Respostas para setup-alpine (GERADO AUTOMATICAMENTE)" > "${SCRIPT_DIR}/setup-alpine.conf"
+# Usa-se `>>` nas linhas seguintes para adicionar ao arquivo.
+echo "KEYMAPOPTS=\"${KEYMAP}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "HOSTNAMEOPTS=\"${HOSTNAME}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "DEVDOPTS=\"mdev\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "INTERFACESOPTS=\"auto lo" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "iface lo inet loopback" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "auto eth0" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "iface eth0 inet dhcp\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "TIMEZONEOPTS=\"${TIMEZONE}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "NTPOPTS=\"chrony\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "SSHDOPTS=\"openssh\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "APKREPOSOPTS=\"-1 -c\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "USEROPTS=\"-a -g audio,video,input,netdev ${USUARIO}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+echo "DISKOPTS=\"-m sys ${DISCO_ALVO}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
+
+echo "    -> setup-alpine.conf criado."
 
 
 # 3.2. Criação do Script de Overlay (genapkovl-laptop-lxqt.sh)
-cat << EOF > "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-#!/bin/sh
-# Script de Overlay (GERADO AUTOMATICAMENTE)
+# Note que a string interna precisa ter aspas simples para proteger as variáveis
+echo "#!/bin/sh" > "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "# Script de Overlay (GERADO AUTOMATICAMENTE)" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "# Ação 1: Copia o Answerfile para o diretório de destino" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "mkdir -p \"\$tmp\"/etc/" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "cp ${SCRIPT_DIR}/setup-alpine.conf \"\$tmp\"/etc/setup-alpine.conf" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "# Ação 2: Configura a automação no boot do LiveCD" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "mkdir -p \"\$tmp\"/etc/local.d/" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+# Bloco Interno (Autoinstall script): Usamos aspas simples para o echo,
+# mas aqui precisaremos ter cuidado especial para não expandir variáveis
+# como \$tmp, \$tmp, ou quebrar aspas. O melhor é manter o here-document
+# ou usar um echo muito cuidadoso, mas vamos forçar a refatoração com echo:
+echo 'cat << INNER_EOF > "$tmp"/etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo '#!/bin/sh' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo '/sbin/setup-alpine -f /etc/setup-alpine.conf' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rm -f /etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'INNER_EOF' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh" # Linha EOF de fechamento
+echo 'chmod +x "$tmp"/etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo "# Ação 3: Habilita serviços cruciais na instalação final" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add dbus default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add elogind default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add lightdm default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add cpufreqd default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add networkmanager default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add sshd default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
+echo 'rc_add chronyd default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 
-# Ação 1: Copia o Answerfile para o diretório de destino
-mkdir -p "\$tmp"/etc/
-cp ${SCRIPT_DIR}/setup-alpine.conf "\$tmp"/etc/setup-alpine.conf
-
-# Ação 2: Configura a automação no boot do LiveCD
-mkdir -p "\$tmp"/etc/local.d/
-cat << INNER_EOF > "\$tmp"/etc/local.d/zz-autoinstall.start
-#!/bin/sh
-/sbin/setup-alpine -f /etc/setup-alpine.conf
-rm -f /etc/local.d/zz-autoinstall.start
-INNER_EOF
-chmod +x "\$tmp"/etc/local.d/zz-autoinstall.start
-
-# Ação 3: Habilita serviços cruciais na instalação final
-rc_add dbus default
-rc_add elogind default
-rc_add lightdm default
-rc_add cpufreqd default
-rc_add networkmanager default
-rc_add sshd default
-rc_add chronyd default
-EOF
 chmod +x "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-echo "   -> genapkovl-laptop-lxqt.sh criado e permissão +x aplicada."
+echo "    -> genapkovl-laptop-lxqt.sh criado e permissão +x aplicada."
 
 
 # 3.3. Criação do Perfil de Build (mkimg.laptop-lxqt.sh)
-cat << EOF > "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
-#!/bin/sh
-# Perfil mkimage (GERADO AUTOMATICAMENTE)
+echo "#!/bin/sh" > "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "# Perfil mkimage (GERADO AUTOMATICAMENTE)" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "profile_laptop_lxqt() {" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    profile_standard" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    kernel_flavors=\"lts\"" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    " >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    apks=\"\$apks ${APKS_LIST}\"" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    # Define o overlay que contém o answerfile e a automação" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "    apkovl=\"aports/scripts/genapkovl-laptop-lxqt.sh\"" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
+echo "}" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
 
-profile_laptop_lxqt() {
-    profile_standard
-    kernel_flavors="lts"
-    
-    apks="\$apks ${APKS_LIST}"
-
-    # Define o overlay que contém o answerfile e a automação
-    apkovl="aports/scripts/genapkovl-laptop-lxqt.sh"
-}
-EOF
-echo "   -> mkimg.laptop-lxqt.sh criado."
+echo "    -> mkimg.laptop-lxqt.sh criado."
 
 # ==========================================================
 # 4. EXECUÇÃO DO BUILD DA ISO
