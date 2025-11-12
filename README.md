@@ -1,0 +1,1 @@
+[![Alpine Custom ISO Builder](https://github.com/AloisioMagalhaes/alpine-lxqt-custom-iso/actions/workflows/build-iso.yml/badge.svg)](https://github.com/AloisioMagalhaes/alpine-lxqt-custom-iso/actions/workflows/build-iso.yml)
