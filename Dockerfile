@@ -23,8 +23,8 @@ RUN apk update && \
     && rm -rf /var/cache/apk/*
 
 # Copia e torna o script executável
-COPY build_custom_iso.sh .
-RUN chmod +x build_custom_iso.sh
+COPY build_alpine_custom.sh .
+RUN chmod +x build_alpine_custom.sh
 
 # Comando de execução padrão
 CMD ["./build_custom_iso.sh"]
