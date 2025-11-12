@@ -24,11 +24,23 @@ jobs:
           # Clonagem do alpine-make-vm-image
           git clone --depth=1 https://github.com/alpinelinux/alpine-make-vm-image.git
           
-          # Conceder permissão de execução IMEDIATAMENTE após a clonagem
-          # Isso deve ser feito no HOST antes de usar o script no container
-          chmod +x alpine-make-vm-image/make-vm-image
+          # -------------------------------------------------------------
+          # CORREÇÃO AQUI: Garante que o arquivo principal seja o target.
+          # O nome do script é 'make-vm-image' (sem extensão .sh).
+          # -------------------------------------------------------------
           
-          # Criação dos diretórios de saída e aports (se não vierem do repositório)
+          SCRIPT_PATH="alpine-make-vm-image/make-vm-image"
+          
+          if [ -f "${SCRIPT_PATH}" ]; then
+            echo "Concedendo permissão de execução para ${SCRIPT_PATH}..."
+            chmod +x "${SCRIPT_PATH}"
+          else
+            echo "ERRO: O script ${SCRIPT_PATH} não foi encontrado após a clonagem."
+            ls -l alpine-make-vm-image/
+            exit 1
+          fi
+          
+          # Criação dos diretórios de saída e aports
           mkdir aports
           mkdir iso_output
 
