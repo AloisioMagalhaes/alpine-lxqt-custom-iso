@@ -46,25 +46,23 @@ jobs:
         # Concede permissão ao seu script run_lxqt_build.sh
         run: chmod +x run_lxqt_build.sh
         
-      - name: 4. Construir Imagem Docker (Ambiente de Build)
-        # Mapeia o diretório raiz do repositório para /workspace no contêiner.
-        run: |
-          echo "Executando o script de build customizado no contêiner..."
-          
-          # A variável de ambiente ISO_TAG é definida com base na tag do Git, se existir, senão usa o padrão do script.
-          # Isso permite que o nome da ISO gerada reflita a versão do release.
-          TAG_NAME="${{ github.ref_name }}"
-          if [ "${TAG_NAME}" = "main" ]; then
-            ISO_TAG_ENV="latest"
-          else
-            ISO_TAG_ENV="${TAG_NAME}"
-          fi
-          
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -e ISO_TAG="${ISO_TAG_ENV}" \
-            "${{ steps.docker_build.outputs.IMAGE_ID }}" \
-            /bin/sh -c "/workspace/run_lxqt_build.sh"
+      - name: 4. Executar Contêiner e Gerar ISO (Executa o Script Customizado)
+  run: |
+    echo "Executando o script de build customizado no contêiner..."
+    
+    TAG_NAME="${{ github.ref_name }}"
+    if [ "${TAG_NAME}" = "main" ]; then
+      ISO_TAG_ENV="latest"
+    else
+      ISO_TAG_ENV="${TAG_NAME}"
+    fi
+    
+    docker run --rm \
+      -v "${{ github.workspace }}:/workspace" \
+      -e ISO_TAG="${ISO_TAG_ENV}" \
+      # CORREÇÃO AQUI: Use o nome da imagem construída ou a variável de saída
+      "alpine-lxqt-builder" \ 
+      /bin/sh -c "/workspace/run_lxqt_build.sh"
 
       - name: 5. Fazer Upload da ISO como Artefato
         uses: actions/upload-artifact@v4
