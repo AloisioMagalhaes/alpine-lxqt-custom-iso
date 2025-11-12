@@ -13,7 +13,7 @@ jobs:
   build_lxqt_iso:
     runs-on: ubuntu-latest
     
-    steps:
+    steps: # <-- INÍCIO DO BLOCO DE PASSOS
       - name: 1. Checkout do Código Principal
         uses: actions/checkout@v4
         
@@ -46,13 +46,15 @@ jobs:
         # Concede permissão ao seu script run_lxqt_build.sh
         run: chmod +x run_lxqt_build.sh
         
+      # ATENÇÃO: A etapa 4 deve estar aqui, alinhada com as outras etapas.
       - name: 4. Executar Contêiner e Gerar ISO (Executa o Script Customizado)
-        # O marcador 'run: |' estava faltando, causando o erro de sintaxe YAML.
         run: |
           echo "Executando o script de build customizado no contêiner..."
           
-          # A variável de ambiente ISO_TAG é definida com base na tag do Git, 
-          # se existir, senão usa o padrão do script.
+          # Note: Adicionei a dependência do Passo 3 aqui, pois você pulou o Passo de 'docker build'
+          # Você deve ter um Passo de 'docker build' aqui para definir 'alpine-lxqt-builder'
+          # Se 'alpine-lxqt-builder' não tiver sido construído, esta etapa falhará.
+          
           TAG_NAME="${{ github.ref_name }}"
           if [ "${TAG_NAME}" = "main" ]; then
             ISO_TAG_ENV="latest"
@@ -60,11 +62,10 @@ jobs:
             ISO_TAG_ENV="${TAG_NAME}"
           fi
           
-          # Use o nome da imagem ou a variável de saída.
-          # Usando a variável de saída para maior robustez:
           IMAGE_REF="alpine-lxqt-builder"
           
           docker run --rm \
+            --pull=never \
             -v "${{ github.workspace }}:/workspace" \
             -e ISO_TAG="${ISO_TAG_ENV}" \
             "${IMAGE_REF}" \
@@ -74,7 +75,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: alpine-lxqt-custom-iso
-          # Busca a ISO que foi salva em 'iso_output' no host pelo script
           path: ${{ github.workspace }}/iso_output/*.iso
           retention-days: 7
           
