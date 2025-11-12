@@ -33,7 +33,7 @@ echo "--- 🛠️ Preparando Ambiente de Build ---"
 # apk add git abuild alpine-conf syslinux xorriso squashfs-tools grub mtools linux-headers
 
 # Cria chaves de assinatura abuild (essencial para mkimage)
-abuild-keygen -a -n || { echo "Falha ao criar chaves abuild."; exit 1; }
+yes | abuild-keygen -a -n || { echo "Falha ao criar chaves abuild."; exit 1; }
 
 # Clonar aports (se ainda não existir)
 if [ ! -d "${APORTS_DIR}" ]; then
