@@ -30,9 +30,8 @@ RUN echo ">>> Preparando ambiente ABBUILD..." && \
     echo 'PACKAGER="Docker Builder <docker@example.com>"' > /root/.abuild/abuild.conf && \
     printf "\n" | abuild-keygen -n -i && \
     echo "Chaves abuild geradas com sucesso durante o build da imagem."
-# --- Fim da Geração de Chaves ABBUILD ---
+# --- FIM DO NOVO PASSO ---
 
-# Copia o script de build para o WORKDIR
 COPY build_alpine_custom.sh .
 # Garante permissão de execução
 RUN chmod +x build_alpine_custom.sh
