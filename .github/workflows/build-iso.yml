@@ -1,60 +1,56 @@
-name: Alpine Custom ISO Builder
+name: Build Alpine Custom ISO
 
 on:
-  # Dispara o build quando uma nova tag que começa com 'v' é criada (ex: v1.0)
   push:
+    branches:
+      - main
+  # Gatilho para iniciar na criação de uma nova tag de release
+  create:
     tags:
       - 'v*'
-  # Permite execução manual pela interface do GitHub
-  workflow_dispatch: 
 
 jobs:
-  build_and_release:
+  build_and_publish_iso:
     runs-on: ubuntu-latest
     
     steps:
       - name: 1. Checkout do Código
         uses: actions/checkout@v4
-        
-      - name: 2. Configurar o QEMU (Necessário para builds não nativas se houver multi-arch)
-        # Embora você esteja usando x86_64, é bom para compatibilidade
-        uses: docker/setup-qemu-action@v3
-      
-      - name: 3. Configurar Buildx
-        uses: docker/setup-buildx-action@v3
+        # Garante que todo o histórico seja buscado para o build
 
-      - name: 4. Construir e Rodar o Contêiner Alpine Build
-        id: run_build
-        # Construímos e rodamos o contêiner em uma única etapa
+      - name: 2. Construir Imagem Docker
+        id: docker_build
         run: |
-          docker build -t alpine-iso-builder .
+          docker build -t alpine-iso-custom .
+          echo "IMAGE_ID=alpine-iso-custom" >> $GITHUB_OUTPUT
+
+      - name: 3. Executar Contêiner e Gerar ISO
+        # O diretório de trabalho do GitHub Actions é mapeado como /github/workspace
+        run: |
+          # Cria o diretório de saída no host do runner
+          mkdir -p iso_output
+          
+          # Executa o contêiner
+          # -v "${{ github.workspace }}":/workspace mapeia o diretório do repositório
+          # O script interno salvará a ISO em /workspace/iso, que é mapeado para ${{ github.workspace }}/iso
           docker run --rm \
-            -v ${{ github.workspace }}:${{ github.workspace }} \
-            -w ${{ github.workspace }} \
-            alpine-iso-builder
+            -v "${{ github.workspace }}:/workspace" \
+            "${{ steps.docker_build.outputs.IMAGE_ID }}" \
+            ./build_custom_iso.sh
 
-      - name: 5. Localizar e Mover Arquivo ISO
-        # O script build_alpine_custom.sh gera a ISO em /workspace/iso no contêiner.
-        # Devido ao mapeamento de volume, o arquivo está em ./iso/ no host.
-        run: |
-          ISO_FILE=$(find ./iso -name "*.iso")
-          if [ -z "$ISO_FILE" ]; then
-            echo "❌ Erro: Arquivo ISO não encontrado em ./iso."
-            exit 1
-          fi
-          echo "ISO_PATH=$ISO_FILE" >> $GITHUB_ENV
-          echo "ISO_NAME=$(basename $ISO_FILE)" >> $GITHUB_ENV
-
-      - name: 6. Criar GitHub Release e Fazer Upload
-        # Dispara apenas quando o workflow foi executado por uma TAG
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+      - name: 4. Fazer Upload da ISO como Artefato
+        uses: actions/upload-artifact@v4
         with:
-          files: ${{ env.ISO_PATH }}
-          name: Release ${{ github.ref_name }} - Alpine LXQt
-          tag_name: ${{ github.ref_name }}
+          name: alpine-custom-iso
+          # O arquivo gerado pelo script estará em /workspace/iso, que no host é ${{ github.workspace }}/iso
+          path: ${{ github.workspace }}/iso/*.iso
+          retention-days: 7
+          
+      - name: 5. Criar Release e Anexar ISO (Opcional, se o gatilho for 'create tag')
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ github.workspace }}/iso/*.iso
           body: |
-            Imagem ISO customizada do Alpine Linux com LXQt, drivers de laptop e instalação automática.
-            Build gerado automaticamente via GitHub Actions.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Release automática da ISO customizada do Alpine Linux.
+            Tag: ${{ github.ref_name }}
