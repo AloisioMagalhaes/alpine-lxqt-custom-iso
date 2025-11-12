@@ -24,7 +24,7 @@ RUN apk update && \
 
 # 2. **CORREÇÃO: Criação e Permissão para o diretório .abuild**
 # Isso garante que /root/.abuild exista e seja acessível pelo abuild-keygen que roda como root.
-RUN whoami && mkdir -p /root/.abuild && chmod 700 /root/.abuild
+#RUN whoami && mkdir -p /root/.abuild && chmod 700 /root/.abuild
 
 # 3. Copia o script de automação para o contêiner
 COPY build_alpine_custom.sh .
