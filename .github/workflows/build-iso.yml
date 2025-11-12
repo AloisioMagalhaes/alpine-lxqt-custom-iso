@@ -11,13 +11,15 @@ on:
 
 jobs:
   build_lxqt_iso:
-    # Usa o runner padrão do Ubuntu
     runs-on: ubuntu-latest
     
     steps:
       - name: 1. Checkout do Código Principal
-        # Busca o código do seu repositório, onde estão o Dockerfile e o script run_lxqt_build.sh
         uses: actions/checkout@v4
+        
+      # NOVO PASSO DE CORREÇÃO: Adicionar permissão de execução
+      - name: 1.5. Garantir Permissão de Execução ao Script
+        run: chmod +x run_lxqt_build.sh
         
       - name: 2. Clonar alpine-make-vm-image e Criar Diretório Aports
         # Clona o repositório base necessário no HOST (runner)
