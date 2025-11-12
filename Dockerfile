@@ -1,4 +1,4 @@
-# Dockerfile (Corrigido)
+# Dockerfile
 FROM docker.io/library/alpine:3.22
 
 # Instalação das dependências e ferramentas de build.
@@ -18,13 +18,12 @@ RUN apk update && \
         mkinitfs \
         openssl \
         util-linux \
-        # ADICIONAR DOAS AQUI: Necessário para abuild-keygen -i
+        # ADICIONADO DOAS: Necessário para abuild-keygen -i
         doas \
         \
     && rm -rf /var/cache/apk/*
 
 # Geração da chave ABBUILD (Não Interativa e BusyBox-Friendly)
-# O comando agora funcionará pois 'doas' está instalado.
 RUN echo ">>> Preparando ambiente ABBUILD..." && \
     mkdir -p /root/.abuild && \
     chmod 700 /root/.abuild && \
