@@ -1,5 +1,6 @@
 #!/bin/sh
 # Script para configurar e executar o 'make-vm-image' com ambiente LXQt.
+# Compatível com BusyBox (sh).
 
 # --- Variáveis de Ambiente ---
 # Assume que o workspace do GitHub Actions é mapeado para /workspace no container.
@@ -41,7 +42,6 @@ SCRIPT_DIR="${APORTS_DIR}/scripts"
 mkdir -p "${SCRIPT_DIR}"
 
 # 4.1. Cria o arquivo de PERFIL mkimg.lxqt.sh
-# Sintaxe compatível com sh
 cat << EOF_PROFILE > "${SCRIPT_DIR}/mkimg.${PROFILE_NAME}.sh"
 profile_${PROFILE_NAME}() {
     profile_standard
@@ -52,21 +52,18 @@ profile_${PROFILE_NAME}() {
 }
 EOF_PROFILE
 
-# 4.2. Cria o arquivo OVERLAY genapkovl-lxqt.sh (REFATORADO: Usa rc_add)
+# 4.2. Cria o arquivo OVERLAY genapkovl-lxqt.sh (Usa rc_add para serviços OpenRC)
 cat << EOF_OVERLAY > "${SCRIPT_DIR}/genapkovl-${PROFILE_NAME}.sh"
 #!/bin/sh
 # Habilita serviços essenciais para o desktop
 echo "Adicionando personalizações de overlay LXQt..."
 
-# Usa rc_add (função definida no ambiente mkimage.sh para o overlay)
 rc_add dbus default
 rc_add elogind default
 rc_add networkmanager default
 rc_add sddm default
-# Opcional: Adicionar SSH se necessário.
 rc_add sshd default 
 
-# Note: Não é necessário fazer 'chmod +x' aqui, mas é uma boa prática.
 EOF_OVERLAY
 chmod +x "${SCRIPT_DIR}/genapkovl-${PROFILE_NAME}.sh"
 
