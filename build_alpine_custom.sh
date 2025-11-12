@@ -24,29 +24,9 @@ APKS_LIST=" \
 "
 
 # ==========================================================
-# 2. PREPARAÇÃO DO AMBIENTE 🚀 (Ajuste BusyBox-Friendly)
+# 2. PREPARAÇÃO DO AMBIENTE (Chaves abuild já criadas no Dockerfile)
 # ==========================================================
 echo "--- 🛠️ Preparando Ambiente de Build ---"
-
-# --- Novo Bloco de Geração de Chaves ---
-# 1. Define o nome da chave para evitar o prompt interativo.
-mkdir -p /root/.abuild
-chmod 700 /root/.abuild
-echo 'PACKAGER="GitHub Actions Builder <action@github.com>"' > /root/.abuild/abuild.conf
-# Define o nome do arquivo de chave que será usado pelo abuild-keygen
-# 3. Gera a chave abuild de forma NÃO-INTERATIVA
-echo ">>> Gerando par de chaves RSA pública/privada para abuild de forma não interativa..."
-# MUDANÇA: Substituímos 'yes ""' por 'printf "\n"' para ser mais robusto no BusyBox sh.
-printf "\n" | abuild-keygen -n -i
-
-# Verificação
-if [ $? -ne 0 ]; then
-    echo "Falha ao gerar chaves abuild. Verifique as dependências."
-    exit 1
-else
-    echo "Chaves abuild geradas com sucesso."
-fi
-# --- Fim do Bloco de Geração de Chaves ---
 
 # Clonar aports (se ainda não existir)
 if [ ! -d "${APORTS_DIR}" ]; then
@@ -62,7 +42,7 @@ SCRIPT_DIR="${APORTS_DIR}/scripts"
 mkdir -p "${OUTPUT_DIR}"
 
 # ==========================================================
-# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO 📝
+# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO
 # ==========================================================
 echo "--- 📝 Criando Arquivos de Configuração ---"
 
@@ -95,7 +75,7 @@ echo "cp ${SCRIPT_DIR}/setup-alpine.conf \"\$tmp\"/etc/setup-alpine.conf" >> "${
 echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "# Ação 2: Configura a automação no boot do LiveCD" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "mkdir -p \"\$tmp\"/etc/local.d/" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-# Bloco Interno (Autoinstall script): Manter o here-document interno para evitar complexidade de escaping.
+# Bloco Interno (Autoinstall script): Mantido como here-document aninhado com 'cat << INNER_EOF'
 echo 'cat << INNER_EOF > "$tmp"/etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo '#!/bin/sh' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo '/sbin/setup-alpine -f /etc/setup-alpine.conf' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
@@ -133,7 +113,7 @@ echo "}" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
 echo "     -> mkimg.laptop-lxqt.sh criado."
 
 # ==========================================================
-# 4. EXECUÇÃO DO BUILD DA ISO 🚀
+# 4. EXECUÇÃO DO BUILD DA ISO
 # ==========================================================
 echo "--- 🚀 Iniciando Construção da ISO ---"
 
