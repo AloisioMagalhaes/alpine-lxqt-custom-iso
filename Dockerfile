@@ -27,4 +27,4 @@ COPY build_alpine_custom.sh .
 RUN chmod +x build_alpine_custom.sh
 
 # Comando de execução padrão
-CMD ["./build_custom_iso.sh"]
+CMD ["./build_alpine_custom.sh"]
