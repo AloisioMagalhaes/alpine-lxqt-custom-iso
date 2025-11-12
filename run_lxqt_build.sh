@@ -1,4 +1,4 @@
-#!/bin/sh
+ #!/bin/sh
 # Script para configurar e executar o 'make-vm-image' com ambiente LXQt.
 # Compatível com BusyBox (sh).
 
@@ -73,7 +73,7 @@ echo "--- Executando make-vm-image ---"
 mkdir -p "${OUTPUT_DIR}"
 
 # Usa o sub-shell para rodar o script a partir do diretório correto
-(cd "${VM_IMAGE_DIR}" && ./make-vm-image \
+(cd "${VM_IMAGE_DIR}" && ./"alpine-make-vm-image" \
     --vm-type iso \
     --tag "${ISO_TAG}" \
     --outdir "${OUTPUT_DIR}" \
