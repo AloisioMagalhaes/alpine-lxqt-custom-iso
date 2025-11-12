@@ -17,18 +17,21 @@ jobs:
       - name: 1. Checkout do Código Principal
         uses: actions/checkout@v4
         
-      # NOVO PASSO DE CORREÇÃO: Adicionar permissão de execução
-      - name: 1.5. Garantir Permissão de Execução ao Script
-        run: chmod +x run_lxqt_build.sh
-        
       - name: 2. Clonar alpine-make-vm-image e Criar Diretório Aports
-        # Clona o repositório base necessário no HOST (runner)
         run: |
           echo "Clonando alpine-make-vm-image e criando diretórios de trabalho..."
           git clone --depth=1 https://github.com/alpinelinux/alpine-make-vm-image.git
           mkdir aports
           mkdir iso_output
 
+      # ETAPA CRUCIAL DE PERMISSÃO CORRIGIDA
+      - name: 2.5. Garantir Permissão de Execução aos Scripts
+        run: |
+          # Permissão para o seu script wrapper
+          chmod +x run_lxqt_build.sh
+          # Permissão para o script principal clonado
+          chmod +x alpine-make-vm-image/make-vm-image
+        
       - name: 3. Construir Imagem Docker (Ambiente de Build)
         id: docker_build
         # Constrói o Dockerfile para criar o ambiente com todas as ferramentas e a chave ABBUILD
