@@ -1,36 +1,40 @@
-# Usa a última versão estável do Alpine Linux como imagem base
-FROM alpine:latest
+FROM docker.io/library/alpine:latest
 
-# Define o diretório de trabalho, que será o ponto de montagem do GitHub Workspace
-ENV BUILD_DIR=/workspace
-WORKDIR ${BUILD_DIR}
+# Define o diretório de trabalho principal
+WORKDIR /workspace
 
-# 1. Instalação de Dependências de Build
+# Instalação das dependências e ferramentas de build
+# Inclui 'printf' para o método de geração de chave não interativa
 RUN apk update && \
     apk add \
-    git \
-    abuild \
-    alpine-conf \
-    syslinux \
-    xorriso \
-    squashfs-tools \
-    grub \
-    mtools \
-    linux-headers \
-    bash \
-    coreutils \
-    # Limpa o cache APK para manter a imagem pequena
+        git \
+        abuild \
+        alpine-conf \
+        syslinux \
+        xorriso \
+        squashfs-tools \
+        grub \
+        mtools \
+        linux-headers \
+        bash \
+        coreutils \
+        printf \
     && rm -rf /var/cache/apk/*
 
-# 2. **CORREÇÃO: Criação e Permissão para o diretório .abuild**
-# Isso garante que /root/.abuild exista e seja acessível pelo abuild-keygen que roda como root.
-RUN whoami && mkdir -p /root/.abuild && chmod 700 /root/.abuild
+# --- Geração de Chaves ABBUILD (Non-interactive) ---
+# Cria o diretório, o arquivo de configuração e gera a chave
+# O 'printf "\n"' envia um ENTER para aceitar o caminho padrão e sem passphrase.
+RUN echo ">>> Preparando ambiente ABBUILD..." && \
+    mkdir -p /root/.abuild && \
+    chmod 700 /root/.abuild && \
+    echo 'PACKAGER="Docker Builder <docker@example.com>"' > /root/.abuild/abuild.conf && \
+    printf "\n" | abuild-keygen -n -i && \
+    echo "Chaves abuild geradas com sucesso durante o build da imagem."
+# --- Fim da Geração de Chaves ABBUILD ---
 
-# 3. Copia o script de automação para o contêiner
+# Copia o script de build para o WORKDIR
 COPY build_alpine_custom.sh .
-
-# 4. Garante que o script é executável
+# Garante permissão de execução
 RUN chmod +x build_alpine_custom.sh
 
-# 5. Define o comando principal
-ENTRYPOINT ["/bin/sh", "./build_alpine_custom.sh"]
+# O ENTRYPOINT é omitido, pois o GitHub Actions executará o script explicitamente.
