@@ -24,21 +24,20 @@ APKS_LIST=" \
 "
 
 # ==========================================================
-# 2. PREPARAÇÃO DO AMBIENTE
+# 2. PREPARAÇÃO DO AMBIENTE 🚀 (Ajuste BusyBox-Friendly)
 # ==========================================================
 echo "--- 🛠️ Preparando Ambiente de Build ---"
 
 # --- Novo Bloco de Geração de Chaves ---
 # 1. Define o nome da chave para evitar o prompt interativo.
-# Usamos um nome de chave estático no ambiente CI/CD.
-# O diretório /root/.abuild deve existir antes.
 mkdir -p /root/.abuild
 chmod 700 /root/.abuild
 echo 'PACKAGER="GitHub Actions Builder <action@github.com>"' > /root/.abuild/abuild.conf
 # Define o nome do arquivo de chave que será usado pelo abuild-keygen
 # 3. Gera a chave abuild de forma NÃO-INTERATIVA
 echo ">>> Gerando par de chaves RSA pública/privada para abuild de forma não interativa..."
-yes "" | abuild-keygen -n -i
+# MUDANÇA: Substituímos 'yes ""' por 'printf "\n"' para ser mais robusto no BusyBox sh.
+printf "\n" | abuild-keygen -n -i
 
 # Verificação
 if [ $? -ne 0 ]; then
@@ -63,14 +62,12 @@ SCRIPT_DIR="${APORTS_DIR}/scripts"
 mkdir -p "${OUTPUT_DIR}"
 
 # ==========================================================
-# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO (REFATORADO COM ECHO)
+# 3. CRIAÇÃO DOS ARQUIVOS DE CONFIGURAÇÃO 📝
 # ==========================================================
 echo "--- 📝 Criando Arquivos de Configuração ---"
 
 # 3.1. Criação do Answerfile (setup-alpine.conf)
-# Usa-se `>` na primeira linha para criar/sobrescrever o arquivo.
 echo "# Arquivo de Respostas para setup-alpine (GERADO AUTOMATICAMENTE)" > "${SCRIPT_DIR}/setup-alpine.conf"
-# Usa-se `>>` nas linhas seguintes para adicionar ao arquivo.
 echo "KEYMAPOPTS=\"${KEYMAP}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
 echo "HOSTNAMEOPTS=\"${HOSTNAME}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
 echo "DEVDOPTS=\"mdev\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
@@ -85,11 +82,10 @@ echo "APKREPOSOPTS=\"-1 -c\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
 echo "USEROPTS=\"-a -g audio,video,input,netdev ${USUARIO}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
 echo "DISKOPTS=\"-m sys ${DISCO_ALVO}\"" >> "${SCRIPT_DIR}/setup-alpine.conf"
 
-echo "    -> setup-alpine.conf criado."
+echo "     -> setup-alpine.conf criado."
 
 
 # 3.2. Criação do Script de Overlay (genapkovl-laptop-lxqt.sh)
-# Note que a string interna precisa ter aspas simples para proteger as variáveis
 echo "#!/bin/sh" > "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "# Script de Overlay (GERADO AUTOMATICAMENTE)" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
@@ -99,15 +95,12 @@ echo "cp ${SCRIPT_DIR}/setup-alpine.conf \"\$tmp\"/etc/setup-alpine.conf" >> "${
 echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "# Ação 2: Configura a automação no boot do LiveCD" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "mkdir -p \"\$tmp\"/etc/local.d/" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-# Bloco Interno (Autoinstall script): Usamos aspas simples para o echo,
-# mas aqui precisaremos ter cuidado especial para não expandir variáveis
-# como \$tmp, \$tmp, ou quebrar aspas. O melhor é manter o here-document
-# ou usar um echo muito cuidadoso, mas vamos forçar a refatoração com echo:
+# Bloco Interno (Autoinstall script): Manter o here-document interno para evitar complexidade de escaping.
 echo 'cat << INNER_EOF > "$tmp"/etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo '#!/bin/sh' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo '/sbin/setup-alpine -f /etc/setup-alpine.conf' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo 'rm -f /etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-echo 'INNER_EOF' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh" # Linha EOF de fechamento
+echo 'INNER_EOF' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo 'chmod +x "$tmp"/etc/local.d/zz-autoinstall.start' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo "# Ação 3: Habilita serviços cruciais na instalação final" >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
@@ -120,7 +113,7 @@ echo 'rc_add sshd default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 echo 'rc_add chronyd default' >> "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
 
 chmod +x "${SCRIPT_DIR}/genapkovl-laptop-lxqt.sh"
-echo "    -> genapkovl-laptop-lxqt.sh criado e permissão +x aplicada."
+echo "     -> genapkovl-laptop-lxqt.sh criado e permissão +x aplicada."
 
 
 # 3.3. Criação do Perfil de Build (mkimg.laptop-lxqt.sh)
@@ -137,10 +130,10 @@ echo "    # Define o overlay que contém o answerfile e a automação" >> "${SCR
 echo "    apkovl=\"aports/scripts/genapkovl-laptop-lxqt.sh\"" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
 echo "}" >> "${SCRIPT_DIR}/mkimg.laptop-lxqt.sh"
 
-echo "    -> mkimg.laptop-lxqt.sh criado."
+echo "     -> mkimg.laptop-lxqt.sh criado."
 
 # ==========================================================
-# 4. EXECUÇÃO DO BUILD DA ISO
+# 4. EXECUÇÃO DO BUILD DA ISO 🚀
 # ==========================================================
 echo "--- 🚀 Iniciando Construção da ISO ---"
 
