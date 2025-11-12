@@ -1,10 +1,9 @@
-FROM docker.io/library/alpine:latest
+# Dockerfile
+FROM docker.io/library/alpine:3.22
 
-# Define o diretório de trabalho principal
 WORKDIR /workspace
 
-# Instalação das dependências e ferramentas de build
-# Inclui 'printf' para o método de geração de chave não interativa
+# Instalação das dependências
 RUN apk update && \
     apk add \
         git \
@@ -18,22 +17,14 @@ RUN apk update && \
         linux-headers \
         bash \
         coreutils \
-        printf \
+        # Adicionar as ferramentas necessárias para o ambiente desktop
+        dbus \
+        elogind \
     && rm -rf /var/cache/apk/*
 
-# --- Geração de Chaves ABBUILD (Non-interactive) ---
-# Cria o diretório, o arquivo de configuração e gera a chave
-# O 'printf "\n"' envia um ENTER para aceitar o caminho padrão e sem passphrase.
-RUN echo ">>> Preparando ambiente ABBUILD..." && \
-    mkdir -p /root/.abuild && \
-    chmod 700 /root/.abuild && \
-    echo 'PACKAGER="Docker Builder <docker@example.com>"' > /root/.abuild/abuild.conf && \
-    printf "\n" | abuild-keygen -n -i && \
-    echo "Chaves abuild geradas com sucesso durante o build da imagem."
-# --- FIM DO NOVO PASSO ---
+# Copia e torna o script executável
+COPY build_custom_iso.sh .
+RUN chmod +x build_custom_iso.sh
 
-COPY build_alpine_custom.sh .
-# Garante permissão de execução
-RUN chmod +x build_alpine_custom.sh
-
-# O ENTRYPOINT é omitido, pois o GitHub Actions executará o script explicitamente.
+# Comando de execução padrão
+CMD ["./build_custom_iso.sh"]
