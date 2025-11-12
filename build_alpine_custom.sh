@@ -6,8 +6,8 @@
 # ==========================================================
 USUARIO="alpineuser"
 HOSTNAME="alpine-custom"
-KEYMAP="us us"
-TIMEZONE="UTC"
+KEYMAP="br br"
+TIMEZONE="America/Sao_Paulo"
 DISCO_ALVO="/dev/sda"
 ISO_TAG="v3.22-custom-auto"
 APORTS_DIR="/workspace/aports"
