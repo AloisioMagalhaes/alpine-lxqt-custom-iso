@@ -28,12 +28,21 @@ APKS_LIST=" \
 # ==========================================================
 echo "--- 🛠️ Preparando Ambiente de Build ---"
 
-# Instala ferramentas essenciais (Já feito no Dockerfile, mas mantido para segurança)
-# apk update
-# apk add git abuild alpine-conf syslinux xorriso squashfs-tools grub mtools linux-headers
+# --- Novo Bloco de Geração de Chaves ---
+# 1. Define o nome da chave para evitar o prompt interativo.
+# Usamos um nome de chave estático no ambiente CI/CD.
+# O diretório /root/.abuild deve existir antes.
+mkdir -p /root/.abuild
+chmod 700 /root/.abuild
 
-# Cria chaves de assinatura abuild (essencial para mkimage)
+# Define o nome do arquivo de chave que será usado pelo abuild-keygen
+export ABUILD_KEY="/root/.abuild/ci-build-key"
+
+# 2. Cria chaves de assinatura abuild de forma não interativa.
+# O 'yes |' fornece entradas vazias (sem senha) para todos os prompts.
+echo ">>> Gerando par de chaves RSA para abuild (não-interativo)"
 yes | abuild-keygen -a -n || { echo "Falha ao criar chaves abuild."; exit 1; }
+# --- Fim do Bloco de Geração de Chaves ---
 
 # Clonar aports (se ainda não existir)
 if [ ! -d "${APORTS_DIR}" ]; then
