@@ -1,4 +1,4 @@
-name: Build Alpine Custom ISO
+name: Build Alpine LXQt Custom ISO
 
 on:
   push:
@@ -10,47 +10,62 @@ on:
       - 'v*'
 
 jobs:
-  build_and_publish_iso:
+  build_lxqt_iso:
+    # Usa o runner padrão do Ubuntu
     runs-on: ubuntu-latest
     
     steps:
-      - name: 1. Checkout do Código
+      - name: 1. Checkout do Código Principal
+        # Busca o código do seu repositório, onde estão o Dockerfile e o script run_lxqt_build.sh
         uses: actions/checkout@v4
-        # Garante que todo o histórico seja buscado para o build
+        
+      - name: 2. Clonar alpine-make-vm-image e Criar Diretório Aports
+        # Clona o repositório base necessário no HOST (runner)
+        run: |
+          echo "Clonando alpine-make-vm-image e criando diretórios de trabalho..."
+          git clone --depth=1 https://github.com/alpinelinux/alpine-make-vm-image.git
+          mkdir aports
+          mkdir iso_output
 
-      - name: 2. Construir Imagem Docker
+      - name: 3. Construir Imagem Docker (Ambiente de Build)
         id: docker_build
+        # Constrói o Dockerfile para criar o ambiente com todas as ferramentas e a chave ABBUILD
         run: |
-          docker build -t alpine-iso-custom .
-          echo "IMAGE_ID=alpine-iso-custom" >> $GITHUB_OUTPUT
+          docker build -t alpine-lxqt-builder .
+          echo "IMAGE_ID=alpine-lxqt-builder" >> $GITHUB_OUTPUT
 
-      - name: 3. Executar Contêiner e Gerar ISO
-        # O diretório de trabalho do GitHub Actions é mapeado como /github/workspace
+      - name: 4. Executar Contêiner e Gerar ISO (Executa o Script Customizado)
+        # Mapeia o diretório raiz do repositório para /workspace no contêiner.
         run: |
-          # Cria o diretório de saída no host do runner
-          mkdir -p iso_output
+          echo "Executando o script de build customizado no contêiner..."
           
-          # Executa o contêiner
-          # -v "${{ github.workspace }}":/workspace mapeia o diretório do repositório
-          # O script interno salvará a ISO em /workspace/iso, que é mapeado para ${{ github.workspace }}/iso
+          # A variável de ambiente ISO_TAG é definida com base na tag do Git, se existir, senão usa o padrão do script.
+          # Isso permite que o nome da ISO gerada reflita a versão do release.
+          TAG_NAME="${{ github.ref_name }}"
+          if [ "${TAG_NAME}" = "main" ]; then
+            ISO_TAG_ENV="latest"
+          else
+            ISO_TAG_ENV="${TAG_NAME}"
+          fi
+          
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
+            -e ISO_TAG="${ISO_TAG_ENV}" \
             "${{ steps.docker_build.outputs.IMAGE_ID }}" \
-            ./build_custom_iso.sh
+            /bin/sh -c "/workspace/run_lxqt_build.sh"
 
-      - name: 4. Fazer Upload da ISO como Artefato
+      - name: 5. Fazer Upload da ISO como Artefato
         uses: actions/upload-artifact@v4
         with:
-          name: alpine-custom-iso
-          # O arquivo gerado pelo script estará em /workspace/iso, que no host é ${{ github.workspace }}/iso
-          path: ${{ github.workspace }}/iso/*.iso
+          name: alpine-lxqt-custom-iso
+          # Busca a ISO que foi salva em 'iso_output' no host pelo script
+          path: ${{ github.workspace }}/iso_output/*.iso
           retention-days: 7
           
-      - name: 5. Criar Release e Anexar ISO (Opcional, se o gatilho for 'create tag')
+      - name: 6. Criar Release e Anexar ISO (Apenas se o gatilho for 'create tag')
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ github.workspace }}/iso/*.iso
+          files: ${{ github.workspace }}/iso_output/*.iso
           body: |
-            Release automática da ISO customizada do Alpine Linux.
-            Tag: ${{ github.ref_name }}
+            Nova ISO customizada do Alpine Linux (LXQt) baseada na tag ${{ github.ref_name }}.
